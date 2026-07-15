@@ -1,0 +1,35 @@
+name: Publish latest edition
+
+on:
+  schedule:
+    # The weekly cloud routine runs Mondays 00:30 UTC and publishes to the
+    # Supabase relay; poll twice an hour through Monday morning UTC.
+    - cron: '15,45 1-8 * * 1'
+    # Daily check so midweek manual re-runs of the routine get picked up.
+    - cron: '45 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch latest edition from relay
+        run: python3 publish.py
+      - name: Commit and push if changed
+        run: |
+          git config user.name "kaizenvest-brief-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "Publish edition $(cat latest.txt)"
+            git push
+          fi
